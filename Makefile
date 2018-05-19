@@ -1,5 +1,5 @@
 # Makefile to build dnsmasq blacklist
-PACKAGE 	= cf-update 
+PACKAGE 	= cf-ddns-update
 SHELL		= /bin/bash
 
 # Go parameters
@@ -33,6 +33,7 @@ COVERALLS_TOKEN	\
 				 = W6VHc8ZFpwbfTzT3xoluEWbKkrsKT1w25
 # DATE=$(shell date -u '+%Y-%m-%d_%I:%M:%S%p')
 DATE			 = $(shell date +'%FT%H%M%S')
+CFTOKEN			 = cf-token
 GIT				 = $(shell git rev-parse --short HEAD)
 LIC			 	 = license
 PAYLOAD 		 = ./.payload
@@ -45,7 +46,8 @@ VERSIONS 		 = s/$(TARGET)_$(OLDVER)_/$(TARGET)_$(VER)_/g
 BADGE 			 = s/version-v$(OLDVER)-green.svg/version-v$(VER)-green.svg/g
 RELEASE 		 = s/Release-v$(OLDVER)-green.svg/Release-v$(VER)-green.svg/g
 TAG 			 = "v$(VER)"
-LDFLAGS 		 = -X main.build=$(DATE) -X main.githash=$(GIT) -X main.version=$(VER)
+TOKEN			 = $(shell cat ./$(CFTOKEN))
+LDFLAGS 		 = -X main.build=$(DATE) -X main.githash=$(GIT) -X main.version=$(VER) -X main.token=$(TOKEN)
 FLAGS 			 = -s -w
 
 ifeq ("$(origin V)", "command line")
@@ -308,3 +310,17 @@ report: ; $(info $(M) running goreporter…)  @ ## Run go goreporter
 	vendor/golang.org/x/net,\
 	vendor/golang.org/x/sync,\
 	vendor/golang.org/x/sys"
+
+.PHONY: encrypt decrypt
+encrypt: ; $(info $(M) encrypting token…)  @ ## Encrypt token
+	@echo $$TOKEN \
+ 	| openssl rsautl \
+	-encrypt \
+	-pubin -inkey ~/.ssh/$(CFTOKEN).pub \
+	> $(CFTOKEN).txt
+
+decrypt: ; $(info $(M) decrypting token…)  @ ## Decrypt token
+	@cat $(CFTOKEN).txt \
+	| openssl rsautl \
+	-decrypt \
+	-inkey ~/.ssh/$(CFTOKEN)

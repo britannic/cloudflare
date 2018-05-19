@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE coverage SYSTEM "http://cobertura.sourceforge.net/xml/coverage-03.dtd">
+<coverage line-rate="0" branch-rate="0" version="" timestamp="1526586446344">
+	<packages>
+		<package name="github.com/britannic/cloudflare" line-rate="0" branch-rate="0" complexity="0">
+			<classes>
+				<class name="-" filename="/Users/Neil/go/src/github.com/britannic/cloudflare/main.go" line-rate="0" branch-rate="0" complexity="0">
+					<methods>
+						<method name="main" signature="" line-rate="0" branch-rate="0">
+							<lines>
+								<line number="60" hits="0"></line>
+							</lines>
+						</method>
+						<method name="basename" signature="" line-rate="0" branch-rate="0">
+							<lines>
+								<line number="66" hits="3"></line>
+								<line number="67" hits="28"></line>
+								<line number="68" hits="2"></line>
+								<line number="69" hits="2"></line>
+								<line number="74" hits="3"></line>
+								<line number="75" hits="15"></line>
+								<line number="76" hits="2"></line>
+								<line number="77" hits="2"></line>
+								<line number="80" hits="3"></line>
+							</lines>
+						</method>
+						<method name="cleanArgs" signature="" line-rate="0" branch-rate="0">
+							<lines>
+								<line number="85" hits="2"></line>
+								<line number="86" hits="6"></line>
+								<line number="88" hits="2"></line>
+								<line number="90" hits="4"></line>
+								<line number="93" hits="2"></line>
+							</lines>
+						</method>
+						<method name="setArgs" signature="" line-rate="0" branch-rate="0">
+							<lines>
+								<line number="98" hits="0"></line>
+								<line number="99" hits="0"></line>
+								<line number="100" hits="0"></line>
+								<line number="101" hits="0"></line>
+								<line number="102" hits="0"></line>
+								<line number="105" hits="0"></line>
+								<line number="110" hits="0"></line>
+								<line number="111" hits="0"></line>
+								<line number="113" hits="0"></line>
+								<line number="114" hits="0"></line>
+								<line number="118" hits="0"></line>
+								<line number="136" hits="0"></line>
+							</lines>
+						</method>
+					</methods>
+					<lines>
+						<line number="60" hits="0"></line>
+						<line number="66" hits="3"></line>
+						<line number="67" hits="28"></line>
+						<line number="68" hits="2"></line>
+						<line number="69" hits="2"></line>
+						<line number="74" hits="3"></line>
+						<line number="75" hits="15"></line>
+						<line number="76" hits="2"></line>
+						<line number="77" hits="2"></line>
+						<line number="80" hits="3"></line>
+						<line number="85" hits="2"></line>
+						<line number="86" hits="6"></line>
+						<line number="88" hits="2"></line>
+						<line number="90" hits="4"></line>
+						<line number="93" hits="2"></line>
+						<line number="98" hits="0"></line>
+						<line number="99" hits="0"></line>
+						<line number="100" hits="0"></line>
+						<line number="101" hits="0"></line>
+						<line number="102" hits="0"></line>
+						<line number="105" hits="0"></line>
+						<line number="110" hits="0"></line>
+						<line number="111" hits="0"></line>
+						<line number="113" hits="0"></line>
+						<line number="114" hits="0"></line>
+						<line number="118" hits="0"></line>
+						<line number="136" hits="0"></line>
+					</lines>
+				</class>
+			</classes>
+		</package>
+	</packages>
+</coverage>

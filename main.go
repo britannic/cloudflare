@@ -15,12 +15,14 @@ var (
 	build        = "UNKNOWN"
 	githash      = "UNKNOWN"
 	hostOS       = "UNKNOWN"
+	cftoken      = "UNKNOWN"
 	version      = "UNKNOWN"
 	// ----------------------------
 
 	exitCmd = os.Exit
-	prog    = basename(os.Args[0])
-	prefix  = fmt.Sprintf("%s: ", prog)
+	// flags   mflag.FlagSet
+	prog = basename(os.Args[0])
+	// prefix  = fmt.Sprintf("%s: ", prog)
 )
 
 // opts struct for command line options and setting initial variables
@@ -35,29 +37,15 @@ type opts struct {
 	mips64  *string
 	mipsle  *string
 	showVer *bool
+	token   *string
 	verbose *bool
 }
 
-var (
-	flags mflag.FlagSet
-	env   = &opts{
-		FlagSet: &flags,
-		arch:    flags.String("arch", runtime.GOARCH, "Set EdgeOS CPU architecture", false),
-		dbug:    flags.Bool("debug", false, "Enable Debug mode", false),
-		dryrun:  flags.Bool("dryrun", false, "Run config and data validation tests", false),
-		file:    flags.String("f", "", "`<file>` # Load a config.boot file", true),
-		help:    flags.Bool("h", false, "Display help", true),
-		hostOS:  flags.String("os", runtime.GOOS, "Override native EdgeOS OS", false),
-		mips64:  flags.String("mips64", "mips64", "Override target EdgeOS CPU architecture", false),
-		mipsle:  flags.String("mipsle", "mipsle", "Override target EdgeOS CPU architecture", false),
-		showVer: flags.Bool("version", false, "Show version", true),
-		verbose: flags.Bool("v", false, "Verbose display", true),
-	}
-)
-
 func main() {
 	// initialization
-	setArgs()
+	env := newOpts()
+	env.Init(prog, mflag.ExitOnError)
+	env.setArgs()
 }
 
 // basename removes directory components and file extensions.
@@ -93,21 +81,40 @@ func cleanArgs(args []string) (r []string) {
 	return r
 }
 
+func newOpts() *opts {
+	var flags mflag.FlagSet
+	return &opts{
+		FlagSet: &flags,
+		arch:    flags.String("arch", runtime.GOARCH, "Set EdgeOS CPU architecture", false),
+		dbug:    flags.Bool("debug", false, "Enable Debug mode", false),
+		dryrun:  flags.Bool("dryrun", false, "Run config and data validation tests", true),
+		file:    flags.String("f", "", "`<file>` # Load a config.boot file", true),
+		help:    flags.Bool("h", false, "Display help", true),
+		hostOS:  flags.String("os", runtime.GOOS, "Override native EdgeOS OS", false),
+		mips64:  flags.String("mips64", "mips64", "Override target EdgeOS CPU architecture", false),
+		mipsle:  flags.String("mipsle", "mipsle", "Override target EdgeOS CPU architecture", false),
+		showVer: flags.Bool("version", false, "Show version", true),
+		token:   flags.String("token", "", "Cloudflare API token", true),
+		verbose: flags.Bool("v", false, "Verbose display", true),
+	}
+}
+
 // setArgs retrieves arguments entered on the command line
-func setArgs() {
-	flags.Init(prog, mflag.ExitOnError)
-	flags.Usage = env.PrintDefaults
+func (env *opts) setArgs() {
+	// env.Usage = env.PrintDefaults
 	if env.Parse(cleanArgs((os.Args[1:]))) != nil {
-		env.Usage()
+		// env.PrintDefaults()
 		exitCmd(0)
 	}
 
 	switch {
+	case "" != *env.token:
+		cftoken = *env.token
 	case *env.dbug:
 		// screenLog("")
 		// e.Dbug(*o.Dbug)
 	case *env.help:
-		env.Usage()
+		env.PrintDefaults()
 		exitCmd(0)
 	case *env.dryrun:
 		fmt.Println("dry run only, no actions will be executed!")

@@ -1,0 +1,249 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/britannic/cloudflare/main.go (51.9%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">no coverage</span>
+				<span class="cov1">low coverage</span>
+				<span class="cov2">*</span>
+				<span class="cov3">*</span>
+				<span class="cov4">*</span>
+				<span class="cov5">*</span>
+				<span class="cov6">*</span>
+				<span class="cov7">*</span>
+				<span class="cov8">*</span>
+				<span class="cov9">*</span>
+				<span class="cov10">high coverage</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package main
+
+import (
+        "fmt"
+        "os"
+        "runtime"
+        "strings"
+
+        "github.com/britannic/mflag"
+)
+
+var (
+        // updated by go build -ldflags
+        architecture = "UNKNOWN"
+        build        = "UNKNOWN"
+        githash      = "UNKNOWN"
+        hostOS       = "UNKNOWN"
+        version      = "UNKNOWN"
+        // ----------------------------
+
+        exitCmd = os.Exit
+        prog    = basename(os.Args[0])
+        prefix  = fmt.Sprintf("%s: ", prog)
+)
+
+// opts struct for command line options and setting initial variables
+type opts struct {
+        *mflag.FlagSet
+        arch    *string
+        dbug    *bool
+        dryrun  *bool
+        file    *string
+        help    *bool
+        hostOS  *string
+        mips64  *string
+        mipsle  *string
+        showVer *bool
+        verbose *bool
+}
+
+var (
+        flags mflag.FlagSet
+        env   = &amp;opts{
+                FlagSet: &amp;flags,
+                arch:    flags.String("arch", runtime.GOARCH, "Set EdgeOS CPU architecture", false),
+                dbug:    flags.Bool("debug", false, "Enable Debug mode", false),
+                dryrun:  flags.Bool("dryrun", false, "Run config and data validation tests", false),
+                file:    flags.String("f", "", "`&lt;file&gt;` # Load a config.boot file", true),
+                help:    flags.Bool("h", false, "Display help", true),
+                hostOS:  flags.String("os", runtime.GOOS, "Override native EdgeOS OS", false),
+                mips64:  flags.String("mips64", "mips64", "Override target EdgeOS CPU architecture", false),
+                mipsle:  flags.String("mipsle", "mipsle", "Override target EdgeOS CPU architecture", false),
+                showVer: flags.Bool("version", false, "Show version", true),
+                verbose: flags.Bool("v", false, "Verbose display", true),
+        }
+)
+
+func main() <span class="cov0" title="0">{
+        // initialization
+        setArgs()
+}</span>
+
+// basename removes directory components and file extensions.
+func basename(s string) string <span class="cov3" title="3">{
+        // Discard last '/' and everything before.
+        for i := len(s) - 1; i &gt;= 0; i-- </span><span class="cov10" title="28">{
+                if s[i] == '/' </span><span class="cov2" title="2">{
+                        s = s[i+1:]
+                        break</span>
+                }
+        }
+
+        // Preserve everything before last '.'
+        <span class="cov3" title="3">for i := len(s) - 1; i &gt;= 0; i-- </span><span class="cov8" title="15">{
+                if s[i] == '.' </span><span class="cov2" title="2">{
+                        s = s[:i]
+                        break</span>
+                }
+        }
+        <span class="cov3" title="3">return s</span>
+}
+
+// cleanArgs removes flags when code is being tested
+func cleanArgs(args []string) (r []string) <span class="cov2" title="2">{
+        for _, a := range args </span><span class="cov5" title="6">{
+                switch </span>{
+                case strings.HasPrefix(a, "-test"), strings.HasPrefix(a, "-convey"):<span class="cov2" title="2">
+                        continue</span>
+                default:<span class="cov4" title="4">
+                        r = append(r, a)</span>
+                }
+        }
+        <span class="cov2" title="2">return r</span>
+}
+
+// setArgs retrieves arguments entered on the command line
+func setArgs() <span class="cov0" title="0">{
+        flags.Init(prog, mflag.ExitOnError)
+        flags.Usage = env.PrintDefaults
+        if env.Parse(cleanArgs((os.Args[1:]))) != nil </span><span class="cov0" title="0">{
+                env.Usage()
+                exitCmd(0)
+        }</span>
+
+        <span class="cov0" title="0">switch </span>{
+        case *env.dbug:</span><span class="cov0" title="0">
+                // screenLog("")
+                // e.Dbug(*o.Dbug)
+        case *env.help:<span class="cov0" title="0">
+                env.Usage()
+                exitCmd(0)</span>
+        case *env.dryrun:<span class="cov0" title="0">
+                fmt.Println("dry run only, no actions will be executed!")
+                exitCmd(0)</span>
+        case *env.verbose:</span><span class="cov0" title="0">
+                // screenLog("")
+        case *env.showVer:<span class="cov0" title="0">
+                fmt.Printf(
+                        " Build Information:\n"+
+                                "   Version:\t\t\t%s\n"+
+                                "   Date:\t\t\t%s\n"+
+                                "   CPU:\t\t\t\t%v\n"+
+                                "   OS:\t\t\t\t%v\n"+
+                                "   Git hash:\t\t\t%v\n\n"+
+                                " This software comes with ABSOLUTELY NO WARRANTY.\n"+
+                                " %s is free software, and you are\n"+
+                                " welcome to redistribute it under the terms of\n"+
+                                " the Simplified BSD License.\n",
+                        version,
+                        build,
+                        architecture,
+                        hostOS,
+                        githash,
+                        prog,
+                )
+                exitCmd(0)</span>
+        }
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
