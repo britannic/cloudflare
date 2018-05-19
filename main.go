@@ -101,9 +101,7 @@ func newOpts() *opts {
 
 // setArgs retrieves arguments entered on the command line
 func (env *opts) setArgs() {
-	// env.Usage = env.PrintDefaults
 	if env.Parse(cleanArgs((os.Args[1:]))) != nil {
-		// env.PrintDefaults()
 		exitCmd(0)
 	}
 
@@ -112,7 +110,6 @@ func (env *opts) setArgs() {
 		cftoken = *env.token
 	case *env.dbug:
 		// screenLog("")
-		// e.Dbug(*o.Dbug)
 	case *env.help:
 		env.PrintDefaults()
 		exitCmd(0)

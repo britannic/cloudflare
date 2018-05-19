@@ -105,36 +105,36 @@ func TestSetArgs(t *testing.T) {
 		args []string
 		exp  interface{}
 	}{
-		// {
-		// 	name: "h",
-		// 	args: []string{prog, "-convey-json", "-h"},
-		// 	exp:  true,
-		// },
-		// {
-		// 	name: "debug",
-		// 	args: []string{prog, "-debug"},
-		// 	exp:  true,
-		// },
-		// {
-		// 	name: "dryrun",
-		// 	args: []string{prog, "-dryrun"},
-		// 	exp:  true,
-		// },
-		// {
-		// 	name: "token",
-		// 	args: []string{prog, "-token", "a12s23984d32e123f432"},
-		// 	exp:  "a12s23984d32e123f432",
-		// },
-		// {
-		// 	name: "version",
-		// 	args: []string{prog, "-version"},
-		// 	exp:  true,
-		// },
-		// {
-		// 	name: "v",
-		// 	args: []string{prog, "-v"},
-		// 	exp:  true,
-		// },
+		{
+			name: "h",
+			args: []string{prog, "-convey-json", "-h"},
+			exp:  true,
+		},
+		{
+			name: "debug",
+			args: []string{prog, "-debug"},
+			exp:  true,
+		},
+		{
+			name: "dryrun",
+			args: []string{prog, "-dryrun"},
+			exp:  true,
+		},
+		{
+			name: "token",
+			args: []string{prog, "-token", "a12s23984d32e123f432"},
+			exp:  "a12s23984d32e123f432",
+		},
+		{
+			name: "version",
+			args: []string{prog, "-version"},
+			exp:  true,
+		},
+		{
+			name: "v",
+			args: []string{prog, "-v"},
+			exp:  true,
+		},
 		{
 			name: "invalid flag",
 			args: []string{prog, "-z"},
