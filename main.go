@@ -13,21 +13,30 @@ var (
 	// updated by go build -ldflags
 	architecture = "UNKNOWN"
 	build        = "UNKNOWN"
+	cftoken      = "UNKNOWN"
 	githash      = "UNKNOWN"
 	hostOS       = "UNKNOWN"
-	cftoken      = "UNKNOWN"
 	version      = "UNKNOWN"
 	// ----------------------------
 
+	env     = newOpts()
 	exitCmd = os.Exit
-	// flags   mflag.FlagSet
-	prog = basename(os.Args[0])
+	prog    = basename(os.Args[0])
 	// prefix  = fmt.Sprintf("%s: ", prog)
 )
+
+// See Cloudflare instructions here: https://api.cloudflare.com/#getting-started-endpoints
 
 // opts struct for command line options and setting initial variables
 type opts struct {
 	*mflag.FlagSet
+	// Cloudflare vars
+	domain     *string
+	email      *string
+	token      *string
+	url        *string
+	userSrvKey *string
+	//----------------
 	arch    *string
 	dbug    *bool
 	dryrun  *bool
@@ -37,13 +46,10 @@ type opts struct {
 	mips64  *string
 	mipsle  *string
 	showVer *bool
-	token   *string
 	verbose *bool
 }
 
 func main() {
-	// initialization
-	env := newOpts()
 	env.Init(prog, mflag.ExitOnError)
 	env.setArgs()
 }
@@ -82,20 +88,29 @@ func cleanArgs(args []string) (r []string) {
 }
 
 func newOpts() *opts {
-	var flags mflag.FlagSet
+	var (
+		flags mflag.FlagSet
+	)
+
 	return &opts{
 		FlagSet: &flags,
-		arch:    flags.String("arch", runtime.GOARCH, "Set EdgeOS CPU architecture", false),
-		dbug:    flags.Bool("debug", false, "Enable Debug mode", false),
-		dryrun:  flags.Bool("dryrun", false, "Run config and data validation tests", true),
-		file:    flags.String("f", "", "`<file>` # Load a config.boot file", true),
-		help:    flags.Bool("h", false, "Display help", true),
-		hostOS:  flags.String("os", runtime.GOOS, "Override native EdgeOS OS", false),
-		mips64:  flags.String("mips64", "mips64", "Override target EdgeOS CPU architecture", false),
-		mipsle:  flags.String("mipsle", "mipsle", "Override target EdgeOS CPU architecture", false),
-		showVer: flags.Bool("version", false, "Show version", true),
-		token:   flags.String("token", "", "Cloudflare API token", true),
-		verbose: flags.Bool("v", false, "Verbose display", true),
+		// Cloudflare settings
+		domain:     flags.String("domain", "", "domain registered with Cloudflare to update", true),
+		email:      flags.String("email", "", "email address registered with Cloudflare", true),
+		token:      flags.String("token", "", "Cloudflare API token", true),
+		url:        flags.String("url", "https://api.cloudflare.com/client/v4/", "Cloudflare API v4 URI", true),
+		userSrvKey: flags.String("userSrvKey", "", "restricted endpoints Cloudflare API key, prefix \"v1.0-\", variable length", true),
+		//----------------
+		arch:    flags.String("arch", runtime.GOARCH, "set EdgeOS CPU architecture", false),
+		dbug:    flags.Bool("debug", false, "enable Debug mode", false),
+		dryrun:  flags.Bool("dryrun", false, "run config and data validation tests", true),
+		file:    flags.String("f", "", "`<file>` # load a config.boot file", true),
+		help:    flags.Bool("h", false, "display help", true),
+		hostOS:  flags.String("os", runtime.GOOS, "override native EdgeOS OS", false),
+		mips64:  flags.String("mips64", "mips64", "override target EdgeOS CPU architecture", false),
+		mipsle:  flags.String("mipsle", "mipsle", "override target EdgeOS CPU architecture", false),
+		showVer: flags.Bool("version", false, "show version", true),
+		verbose: flags.Bool("v", false, "verbose display", true),
 	}
 }
 

@@ -11,6 +11,19 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+func init() {
+	/*
+	   The default failure mode is FailureHalts, which causes test execution
+	   within a `Convey` block to halt at the first failure. You could use
+	   that mode if the test were re-worked to aggregate all results into
+	   a collection that was verified after all goroutines have finished.
+	   But, as the code stands, you need to use the FailureContinues mode.
+
+	   The following line sets the failure mode for all tests in the package:
+	*/
+	SetDefaultFailureMode(FailureContinues)
+}
+
 func (o *opts) String() string {
 	var s string
 	o.VisitAll(func(f *mflag.Flag) {
@@ -43,6 +56,18 @@ func (o *opts) String() string {
 	})
 
 	return s
+}
+
+func TestMain(t *testing.T) {
+	origArgs := os.Args
+	exitCmd = func(int) {}
+	defer func() { os.Args = origArgs }()
+
+	main()
+
+	Convey("Testing main()", t, func() {
+		So(fmt.Sprintf("%v", env), ShouldEqual, mainArgs)
+	})
 }
 
 func TestBasename(t *testing.T) {
@@ -138,23 +163,9 @@ func TestSetArgs(t *testing.T) {
 		{
 			name: "invalid flag",
 			args: []string{prog, "-z"},
-			exp: `flag provided but not defined: -z
-Usage of ` + prog + `:
-  -dryrun
-    	Run config and data validation tests
-  -f <file>
-    	<file> # Load a config.boot file
-  -h	Display help
-  -token string
-    	Cloudflare API token
-  -v	Verbose display
-  -version
-    	Show version
-`,
+			exp:  invalidArg,
 		},
 	}
-
-	// check := func(flg interface{}){}
 
 	for _, tt := range tests {
 		os.Args = nil
@@ -162,7 +173,7 @@ Usage of ` + prog + `:
 			os.Args = tt.args
 		}
 
-		env := newOpts()
+		env = newOpts()
 		env.Init(prog, mflag.ContinueOnError)
 
 		Convey("Testing commandline output", t, func() {
@@ -184,3 +195,58 @@ Usage of ` + prog + `:
 		})
 	}
 }
+
+var (
+	mainArgs = `  -arch string
+    	set EdgeOS CPU architecture (default "amd64")
+  -debug
+    	enable Debug mode
+  -domain string
+    	domain registered with Cloudflare to update
+  -dryrun
+    	run config and data validation tests
+  -email string
+    	email address registered with Cloudflare
+  -f <file>
+    	<file> # load a config.boot file
+  -h
+    	display help
+  -mips64 string
+    	override target EdgeOS CPU architecture (default "mips64")
+  -mipsle string
+    	override target EdgeOS CPU architecture (default "mipsle")
+  -os string
+    	override native EdgeOS OS (default "darwin")
+  -token string
+    	Cloudflare API token
+  -url string
+    	Cloudflare API v4 URI (default "https://api.cloudflare.com/client/v4/")
+  -userSrvKey string
+    	restricted endpoints Cloudflare API key, prefix "v1.0-", variable length
+  -v
+    	verbose display
+  -version
+    	show version
+`
+	invalidArg = `flag provided but not defined: -z
+Usage of ` + prog + `.test:
+  -domain string
+    	domain registered with Cloudflare to update
+  -dryrun
+    	run config and data validation tests
+  -email string
+    	email address registered with Cloudflare
+  -f <file>
+    	<file> # load a config.boot file
+  -h	display help
+  -token string
+    	Cloudflare API token
+  -url string
+    	Cloudflare API v4 URI (default "https://api.cloudflare.com/client/v4/")
+  -userSrvKey string
+    	restricted endpoints Cloudflare API key, prefix "v1.0-", variable length
+  -v	verbose display
+  -version
+    	show version
+`
+)
