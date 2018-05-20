@@ -11,6 +11,10 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+type fakelogger struct {
+	message string
+}
+
 func init() {
 	/*
 	   The default failure mode is FailureHalts, which causes test execution
@@ -22,6 +26,10 @@ func init() {
 	   The following line sets the failure mode for all tests in the package:
 	*/
 	SetDefaultFailureMode(FailureContinues)
+}
+
+func (f *fakelogger) Fatalln(v ...interface{}) {
+	f.message = fmt.Sprint(v...)
 }
 
 func (o *opts) String() string {
@@ -59,15 +67,40 @@ func (o *opts) String() string {
 }
 
 func TestMain(t *testing.T) {
-	origArgs := os.Args
 	exitCmd = func(int) {}
-	defer func() { os.Args = origArgs }()
+	origArgs := os.Args
 
-	main()
+	Convey("Testing main() with no arguments", t, func() {
+		act := &fakelogger{}
+		env.logger = act
 
-	Convey("Testing main()", t, func() {
+		main()
+
 		So(fmt.Sprintf("%v", env), ShouldEqual, mainArgs)
+		So(act.message, ShouldContainSubstring, "invalid credentials: key & email must not be empty")
 	})
+
+	os.Args = origArgs
+}
+
+func TestMainAgain(t *testing.T) {
+	var osArgs = []string{prog, "-url", "http://testing.home.local"}
+
+	exitCmd = func(int) {}
+	origArgs := os.Args
+
+	Convey("Testing main() with "+osArgs[2], t, func() {
+		os.Args = origArgs
+		env = newOpts()
+		env.logger = &fakelogger{}
+		*env.email = "user@big.com"
+		*env.apiKey = "deadbeef"
+		os.Args = osArgs
+		main()
+		So(*env.url, ShouldEqual, osArgs[2])
+	})
+
+	os.Args = origArgs
 }
 
 func TestBasename(t *testing.T) {
@@ -146,8 +179,8 @@ func TestSetArgs(t *testing.T) {
 			exp:  true,
 		},
 		{
-			name: "token",
-			args: []string{prog, "-token", "a12s23984d32e123f432"},
+			name: "apiKey",
+			args: []string{prog, "-apiKey", "a12s23984d32e123f432"},
 			exp:  "a12s23984d32e123f432",
 		},
 		{
@@ -179,7 +212,7 @@ func TestSetArgs(t *testing.T) {
 		Convey("Testing commandline output", t, func() {
 			Convey("Testing setArgs() with "+tt.name+"\n", func() {
 				switch {
-				case tt.name == "token":
+				case tt.name == "apiKey":
 					env.setArgs()
 					So(cftoken, ShouldEqual, tt.exp.(string))
 				case tt.name == "invalid flag":
@@ -197,7 +230,9 @@ func TestSetArgs(t *testing.T) {
 }
 
 var (
-	mainArgs = `  -arch string
+	mainArgs = `  -apiKey string
+    	Cloudflare API key
+  -arch string
     	set EdgeOS CPU architecture (default "amd64")
   -debug
     	enable Debug mode
@@ -217,10 +252,8 @@ var (
     	override target EdgeOS CPU architecture (default "mipsle")
   -os string
     	override native EdgeOS OS (default "darwin")
-  -token string
-    	Cloudflare API token
   -url string
-    	Cloudflare API v4 URI (default "https://api.cloudflare.com/client/v4/")
+    	Cloudflare API v4 URI
   -userSrvKey string
     	restricted endpoints Cloudflare API key, prefix "v1.0-", variable length
   -v
@@ -230,6 +263,8 @@ var (
 `
 	invalidArg = `flag provided but not defined: -z
 Usage of ` + prog + `.test:
+  -apiKey string
+    	Cloudflare API key
   -domain string
     	domain registered with Cloudflare to update
   -dryrun
@@ -239,10 +274,8 @@ Usage of ` + prog + `.test:
   -f <file>
     	<file> # load a config.boot file
   -h	display help
-  -token string
-    	Cloudflare API token
   -url string
-    	Cloudflare API v4 URI (default "https://api.cloudflare.com/client/v4/")
+    	Cloudflare API v4 URI
   -userSrvKey string
     	restricted endpoints Cloudflare API key, prefix "v1.0-", variable length
   -v	verbose display

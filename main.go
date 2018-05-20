@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"runtime"
 	"strings"
@@ -17,15 +18,19 @@ var (
 	githash      = "UNKNOWN"
 	hostOS       = "UNKNOWN"
 	version      = "UNKNOWN"
-	// ----------------------------
+	env          = newOpts()
+	exitCmd      = os.Exit
+	prog         = basename(os.Args[0])
 
-	env     = newOpts()
-	exitCmd = os.Exit
-	prog    = basename(os.Args[0])
+	// logFatalln = func(args ...interface{}) { log.Fatalln(args...); exitCmd(1) }
+
 	// prefix  = fmt.Sprintf("%s: ", prog)
 )
 
-// See Cloudflare instructions here: https://api.cloudflare.com/#getting-started-endpoints
+// logger implements an interface of logging functions that can be overriden
+type logger interface {
+	Fatalln(v ...interface{})
+}
 
 // opts struct for command line options and setting initial variables
 type opts struct {
@@ -33,25 +38,35 @@ type opts struct {
 	// Cloudflare vars
 	domain     *string
 	email      *string
-	token      *string
+	apiKey     *string
 	url        *string
 	userSrvKey *string
-	//----------------
-	arch    *string
-	dbug    *bool
-	dryrun  *bool
-	file    *string
-	help    *bool
-	hostOS  *string
-	mips64  *string
-	mipsle  *string
-	showVer *bool
-	verbose *bool
+	arch       *string
+	dbug       *bool
+	dryrun     *bool
+	file       *string
+	help       *bool
+	hostOS     *string
+	logger     logger
+	mips64     *string
+	mipsle     *string
+	showVer    *bool
+	verbose    *bool
 }
 
 func main() {
 	env.Init(prog, mflag.ExitOnError)
 	env.setArgs()
+	api, err := env.getCFAPI()
+	if err != nil {
+		env.logger.Fatalln(err)
+	}
+
+	if *env.url != "" {
+		api.BaseURL = *env.url
+	}
+
+	fmt.Println(api, err)
 }
 
 // basename removes directory components and file extensions.
@@ -94,11 +109,12 @@ func newOpts() *opts {
 
 	return &opts{
 		FlagSet: &flags,
+		logger:  log.New(os.Stderr, "", log.Ltime),
 		// Cloudflare settings
 		domain:     flags.String("domain", "", "domain registered with Cloudflare to update", true),
 		email:      flags.String("email", "", "email address registered with Cloudflare", true),
-		token:      flags.String("token", "", "Cloudflare API token", true),
-		url:        flags.String("url", "https://api.cloudflare.com/client/v4/", "Cloudflare API v4 URI", true),
+		apiKey:     flags.String("apiKey", "", "Cloudflare API key", true),
+		url:        flags.String("url", "", "Cloudflare API v4 URI", true),
 		userSrvKey: flags.String("userSrvKey", "", "restricted endpoints Cloudflare API key, prefix \"v1.0-\", variable length", true),
 		//----------------
 		arch:    flags.String("arch", runtime.GOARCH, "set EdgeOS CPU architecture", false),
@@ -120,20 +136,29 @@ func (env *opts) setArgs() {
 		exitCmd(0)
 	}
 
-	switch {
-	case "" != *env.token:
-		cftoken = *env.token
-	case *env.dbug:
-		// screenLog("")
-	case *env.help:
+	if *env.apiKey != "" {
+		cftoken = *env.apiKey
+	}
+
+	if *env.dbug {
+		fmt.Println("screenLog()")
+	}
+
+	if *env.help {
 		env.PrintDefaults()
 		exitCmd(0)
-	case *env.dryrun:
+	}
+
+	if *env.dryrun {
 		fmt.Println("dry run only, no actions will be executed!")
 		exitCmd(0)
-	case *env.verbose:
-		// screenLog("")
-	case *env.showVer:
+	}
+
+	if *env.verbose {
+		fmt.Println("screenLog()")
+	}
+
+	if *env.showVer {
 		fmt.Printf(
 			" Build Information:\n"+
 				"   Version:\t\t\t%s\n"+
