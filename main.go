@@ -3,11 +3,13 @@ package main
 import (
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"runtime"
 	"strings"
 
 	"github.com/britannic/mflag"
+	cloudflare "github.com/cloudflare/cloudflare-go"
 )
 
 var (
@@ -18,28 +20,30 @@ var (
 	githash      = "UNKNOWN"
 	hostOS       = "UNKNOWN"
 	version      = "UNKNOWN"
-	env          = newOpts()
 	exitCmd      = os.Exit
+	env          = newOpts()
 	prog         = basename(os.Args[0])
-
-	// logFatalln = func(args ...interface{}) { log.Fatalln(args...); exitCmd(1) }
 
 	// prefix  = fmt.Sprintf("%s: ", prog)
 )
 
-// logger implements an interface of logging functions that can be overriden
+// logger interface wraps logging functions that can be overriden
 type logger interface {
+	Fatalf(s string, v ...interface{})
 	Fatalln(v ...interface{})
+	// Panic(v ...interface{})
 }
 
 // opts struct for command line options and setting initial variables
 type opts struct {
 	*mflag.FlagSet
 	// Cloudflare vars
+	cf         cfAPI
+	api        *cloudflare.API
 	domain     *string
 	email      *string
 	apiKey     *string
-	url        *string
+	apiURL     *string
 	userSrvKey *string
 	arch       *string
 	dbug       *bool
@@ -47,9 +51,10 @@ type opts struct {
 	file       *string
 	help       *bool
 	hostOS     *string
-	logger     logger
+	log        logger
 	mips64     *string
 	mipsle     *string
+	ok         bool
 	showVer    *bool
 	verbose    *bool
 }
@@ -57,16 +62,53 @@ type opts struct {
 func main() {
 	env.Init(prog, mflag.ExitOnError)
 	env.setArgs()
-	api, err := env.getCFAPI()
+
+	if err := env.getCFAPI(); err != nil {
+		env.log.Fatalln(err)
+	}
+
+	fmt.Println(env.routableIP("udp", "8.8.8.8:80"))
+
+	// Fetch a slice of all zones available to this account.
+	// zones, err := api.ListZones()
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	// for _, z := range zones {
+	// 	fmt.Println(z.Name)
+	// }
+
+	if env.ok {
+		zoneID, err := env.cf.ZoneIDByName("orbc2.org")
+		if err != nil {
+			env.log.Fatalln(err)
+		}
+
+		r, err := env.getDNSRecord(zoneID, "sylvania.kh.orbc2.org")
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		fmt.Printf("Name: %s\nID: %s\nProxied: %v\n", r.Name, r.ID, r.Proxied)
+	}
+
+	// api.UpdateDNSRecord(zoneID string, recordID string, rr cloudflare.DNSRecord)
+
+}
+
+// routableIP returns the WAN address
+func (o *opts) routableIP(network, address string) (string, error) {
+	conn, err := net.Dial(network, address)
 	if err != nil {
-		env.logger.Fatalln(err)
+		return "", fmt.Errorf("net.Dial: %v", err)
 	}
 
-	if *env.url != "" {
-		api.BaseURL = *env.url
-	}
-
-	fmt.Println(api, err)
+	ip := conn.LocalAddr().(*net.UDPAddr).String()
+	ndx := strings.LastIndex(ip, ":")
+	conn.Close()
+	// return ip
+	return ip[0:ndx], nil
 }
 
 // basename removes directory components and file extensions.
@@ -108,14 +150,15 @@ func newOpts() *opts {
 	)
 
 	return &opts{
+		cf:      &cloudflare.API{},
 		FlagSet: &flags,
-		logger:  log.New(os.Stderr, "", log.Ltime),
+		log:     log.New(os.Stderr, "", log.Ltime),
 		// Cloudflare settings
 		domain:     flags.String("domain", "", "domain registered with Cloudflare to update", true),
 		email:      flags.String("email", "", "email address registered with Cloudflare", true),
-		apiKey:     flags.String("apiKey", "", "Cloudflare API key", true),
-		url:        flags.String("url", "", "Cloudflare API v4 URI", true),
-		userSrvKey: flags.String("userSrvKey", "", "restricted endpoints Cloudflare API key, prefix \"v1.0-\", variable length", true),
+		apiKey:     flags.String("apikey", "", "Cloudflare API key", true),
+		apiURL:     flags.String("url", "", "Cloudflare API v4 URI", true),
+		userSrvKey: flags.String("userkey", "", "restricted endpoints Cloudflare API key, prefix \"v1.0-\", variable length", true),
 		//----------------
 		arch:    flags.String("arch", runtime.GOARCH, "set EdgeOS CPU architecture", false),
 		dbug:    flags.Bool("debug", false, "enable Debug mode", false),
@@ -131,34 +174,34 @@ func newOpts() *opts {
 }
 
 // setArgs retrieves arguments entered on the command line
-func (env *opts) setArgs() {
-	if env.Parse(cleanArgs((os.Args[1:]))) != nil {
+func (o *opts) setArgs() {
+	if o.Parse(cleanArgs((os.Args[1:]))) != nil {
 		exitCmd(0)
 	}
 
-	if *env.apiKey != "" {
-		cftoken = *env.apiKey
+	if *o.apiKey != "" {
+		cftoken = *o.apiKey
 	}
 
-	if *env.dbug {
+	if *o.dbug {
 		fmt.Println("screenLog()")
 	}
 
-	if *env.help {
-		env.PrintDefaults()
+	if *o.help {
+		o.PrintDefaults()
 		exitCmd(0)
 	}
 
-	if *env.dryrun {
+	if *o.dryrun {
 		fmt.Println("dry run only, no actions will be executed!")
 		exitCmd(0)
 	}
 
-	if *env.verbose {
+	if *o.verbose {
 		fmt.Println("screenLog()")
 	}
 
-	if *env.showVer {
+	if *o.showVer {
 		fmt.Printf(
 			" Build Information:\n"+
 				"   Version:\t\t\t%s\n"+

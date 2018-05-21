@@ -5,6 +5,8 @@ import (
 	"os"
 	"testing"
 
+	cloudflare "github.com/cloudflare/cloudflare-go"
+
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -51,10 +53,11 @@ func Test_getCFAPI(t *testing.T) {
 
 	for _, tt := range tests {
 		Convey(tt.name, t, func() {
+			got := newOpts()
 			So(os.Unsetenv("CF_API_EMAIL"), ShouldBeNil)
 			So(os.Unsetenv("CF_API_KEY"), ShouldBeNil)
-			*env.email = ""
-			*env.apiKey = ""
+			*got.email = ""
+			*got.apiKey = ""
 
 			if tt.osEnv {
 				So(os.Setenv("CF_API_EMAIL", tt.wantEmail), ShouldBeNil)
@@ -62,20 +65,35 @@ func Test_getCFAPI(t *testing.T) {
 			}
 
 			if !tt.osEnv && tt.wantErr == nil {
-				*env.email = tt.wantEmail
-				*env.apiKey = tt.wantKey
+				*got.email = tt.wantEmail
+				*got.apiKey = tt.wantKey
 			}
 
-			got, err := env.getCFAPI()
+			err := got.getCFAPI()
 
 			switch {
 			case tt.wantErr == nil:
 				So(err, ShouldBeNil)
-				So(got.APIEmail, ShouldEqual, tt.wantEmail)
-				So(got.APIKey, ShouldEqual, tt.wantKey)
+				So(got.api.APIEmail, ShouldEqual, tt.wantEmail)
+				So(got.api.APIKey, ShouldEqual, tt.wantKey)
 			case tt.wantErr != nil:
 				So(err.Error(), ShouldResemble, tt.wantErr.Error())
 			}
 		})
 	}
+}
+
+// DNSRecords returns an array of DNSRecord
+func (f *fakeAPI) DNSRecords(s string, rr cloudflare.DNSRecord) ([]cloudflare.DNSRecord, error) {
+	var r []cloudflare.DNSRecord
+	r = append(r, rr)
+	return r, nil
+}
+
+// ZoneIDByName retrieves a zone's ID from the name.
+func (f *fakeAPI) ZoneIDByName(zoneName string) (string, error) {
+	if f.message != zoneName {
+		return zoneName, errors.New("command ListZones failed: error from makeRequest: HTTP request failed")
+	}
+	return zoneName, nil
 }

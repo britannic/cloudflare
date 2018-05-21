@@ -15,6 +15,10 @@ type fakelogger struct {
 	message string
 }
 
+type fakeAPI struct {
+	message string
+}
+
 func init() {
 	/*
 	   The default failure mode is FailureHalts, which causes test execution
@@ -28,9 +32,24 @@ func init() {
 	SetDefaultFailureMode(FailureContinues)
 }
 
+func (f *fakelogger) Fatalf(s string, v ...interface{}) {
+	f.message = fmt.Sprintf(s, v...)
+	exitCmd(0)
+}
+
 func (f *fakelogger) Fatalln(v ...interface{}) {
 	f.message = fmt.Sprint(v...)
+	exitCmd(0)
 }
+
+// func (f *fakelogger) Panic(v ...interface{}) {
+// 	f.message = fmt.Sprint(v...)
+// 	exitCmd(0)
+// }
+
+// func (f *fakeAPI) getDNSRecord(api *cloudflare.API, zoneID, fqdn string) (cloudflare.DNSRecord, error) {
+// 	return cloudflare.DNSRecord{}, nil
+// }
 
 func (o *opts) String() string {
 	var s string
@@ -72,8 +91,8 @@ func TestMain(t *testing.T) {
 
 	Convey("Testing main() with no arguments", t, func() {
 		act := &fakelogger{}
-		env.logger = act
-
+		env.log = act
+		env.log.Fatalf("s string %v", act)
 		main()
 
 		So(fmt.Sprintf("%v", env), ShouldEqual, mainArgs)
@@ -91,13 +110,15 @@ func TestMainAgain(t *testing.T) {
 
 	Convey("Testing main() with "+osArgs[2], t, func() {
 		os.Args = origArgs
-		env = newOpts()
-		env.logger = &fakelogger{}
+		env.cf = &fakeAPI{}
+		env.log = &fakelogger{}
+
 		*env.email = "user@big.com"
 		*env.apiKey = "deadbeef"
 		os.Args = osArgs
 		main()
-		So(*env.url, ShouldEqual, osArgs[2])
+		So(*env.apiURL, ShouldEqual, osArgs[2])
+		// So(env.)
 	})
 
 	os.Args = origArgs
@@ -149,6 +170,18 @@ func TestExitCmd(t *testing.T) {
 	})
 }
 
+func TestRoutableIP(t *testing.T) {
+	Convey("Testing routableIP", t, func() {
+		exitCmd = func(int) {}
+		env = newOpts()
+		// act := &fakelogger{}
+		// env.log = act
+		s, err := env.routableIP("barf", "$.$.$.$")
+		So(s, ShouldEqual, "")
+		So(err.Error(), ShouldEqual, "net.Dial: dial barf: unknown network barf")
+	})
+}
+
 func TestSetArgs(t *testing.T) {
 	var (
 		origArgs = os.Args
@@ -179,8 +212,8 @@ func TestSetArgs(t *testing.T) {
 			exp:  true,
 		},
 		{
-			name: "apiKey",
-			args: []string{prog, "-apiKey", "a12s23984d32e123f432"},
+			name: "apikey",
+			args: []string{prog, "-apikey", "a12s23984d32e123f432"},
 			exp:  "a12s23984d32e123f432",
 		},
 		{
@@ -206,7 +239,7 @@ func TestSetArgs(t *testing.T) {
 			os.Args = tt.args
 		}
 
-		env = newOpts()
+		env := newOpts()
 		env.Init(prog, mflag.ContinueOnError)
 
 		Convey("Testing commandline output", t, func() {
@@ -230,7 +263,7 @@ func TestSetArgs(t *testing.T) {
 }
 
 var (
-	mainArgs = `  -apiKey string
+	mainArgs = `  -apikey string
     	Cloudflare API key
   -arch string
     	set EdgeOS CPU architecture (default "amd64")
@@ -254,7 +287,7 @@ var (
     	override native EdgeOS OS (default "darwin")
   -url string
     	Cloudflare API v4 URI
-  -userSrvKey string
+  -userkey string
     	restricted endpoints Cloudflare API key, prefix "v1.0-", variable length
   -v
     	verbose display
@@ -263,7 +296,7 @@ var (
 `
 	invalidArg = `flag provided but not defined: -z
 Usage of ` + prog + `.test:
-  -apiKey string
+  -apikey string
     	Cloudflare API key
   -domain string
     	domain registered with Cloudflare to update
@@ -276,7 +309,7 @@ Usage of ` + prog + `.test:
   -h	display help
   -url string
     	Cloudflare API v4 URI
-  -userSrvKey string
+  -userkey string
     	restricted endpoints Cloudflare API key, prefix "v1.0-", variable length
   -v	verbose display
   -version

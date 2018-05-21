@@ -1,2 +1,6 @@
-
-cf-token.txt
+*.amd64
+*.mips
+*.mipsel
+*.txt
+*.test
+*.bkp
