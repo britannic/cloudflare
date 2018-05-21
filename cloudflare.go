@@ -51,17 +51,10 @@ func (o *opts) getCFAPI() (err error) {
 
 	if opt != nil {
 		o.api, err = cloudflare.New(key, email, opt)
-		// if o.api != nil {
-		// 	o.cf = o.api
-		// }
-
 		return err
 	}
 
 	o.api, err = cloudflare.New(key, email)
-	// if o.api != nil {
-	// 	o.cf = o.api
-	// }
 
 	return err
 }

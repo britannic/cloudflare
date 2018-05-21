@@ -96,7 +96,7 @@ func TestMain(t *testing.T) {
 		main()
 
 		So(fmt.Sprintf("%v", env), ShouldEqual, mainArgs)
-		So(act.message, ShouldContainSubstring, "invalid credentials: key & email must not be empty")
+		So(act.message, ShouldContainSubstring, "command ListZones failed: error from makeRequest: HTTP request failed")
 	})
 
 	os.Args = origArgs
@@ -109,6 +109,7 @@ func TestMainAgain(t *testing.T) {
 	origArgs := os.Args
 
 	Convey("Testing main() with "+osArgs[2], t, func() {
+		env = newOpts()
 		os.Args = origArgs
 		env.cf = &fakeAPI{}
 		env.log = &fakelogger{}
@@ -118,7 +119,6 @@ func TestMainAgain(t *testing.T) {
 		os.Args = osArgs
 		main()
 		So(*env.apiURL, ShouldEqual, osArgs[2])
-		// So(env.)
 	})
 
 	os.Args = origArgs
