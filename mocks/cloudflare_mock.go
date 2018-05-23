@@ -1,4 +1,4 @@
-package main
+package mocks
 
 import (
 	"fmt"
@@ -19,24 +19,6 @@ type CfAPI struct {
 	WantErr bool
 	ZoneID  string
 }
-
-// getDNSRecord provides a mock function with given fields: api *cloudflare.API, zoneID, fqdn string
-// func (c *CfAPI) GetDNSRecord(api *cloudflare.API, zoneID, fqdn string, r cloudflare.DNSRecord) (cloudflare.DNSRecord, error) {
-// 	recs, err := c.DNSRecords(api, zoneID, cloudflare.DNSRecord{})
-// 	if err != nil {
-// 		return cloudflare.DNSRecord{}, fmt.Errorf("function GetDNSRecord() failed: %v", c.Message)
-// 	}
-
-// 	for _, rec := range recs {
-// 		// fmt.Printf("%s: %s\n", r.Name, r.Content)
-// 		// fmt.Printf("Name: %s\nID: %s\nProxied: %v\n", r.Name, r.ID, r.Proxied)
-// 		if rec.Name == fqdn {
-// 			return rec, nil
-// 		}
-// 	}
-
-// 	return cloudflare.DNSRecord{}, errors.New(fqdn + " was not found")
-// }
 
 // DNSRecords returns a slice of DNS records for the given zone identifier.
 //

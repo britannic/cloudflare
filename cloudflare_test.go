@@ -4,6 +4,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/britannic/cloudflare/mocks"
+	"github.com/britannic/mflag"
 	cloudflare "github.com/cloudflare/cloudflare-go"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
@@ -11,7 +13,7 @@ import (
 
 // Ensure cfAPI implements the Cloudflare & Dnsrecords interfaces, compile will fail otherwise
 var (
-	_ Cloudflare = (*CfAPI)(nil)
+	_ Cloudflare = (*mocks.CfAPI)(nil)
 	// _ Dnsrecords = (*mocks.CfAPI)(nil)
 )
 
@@ -20,7 +22,7 @@ func TestGetDNSRecord(t *testing.T) {
 		name       string
 		api        Cloudflare
 		z          *cfAPI
-		cf         *CfAPI
+		cf         *mocks.CfAPI
 		dns        cloudflare.DNSRecord
 		fqdn       string
 		message    string
@@ -53,8 +55,8 @@ func TestGetDNSRecord(t *testing.T) {
 
 	for _, tt := range tests {
 		Convey(tt.name, t, func() {
-			tt.cf = &CfAPI{}
-			tt.api = &CfAPI{
+			tt.cf = &mocks.CfAPI{}
+			tt.api = &mocks.CfAPI{
 				Fqdn:    tt.wantFQDN,
 				Message: tt.message,
 				WantErr: tt.wantError,
@@ -177,11 +179,53 @@ func TestNewcfAPI(t *testing.T) {
 				So(c.api.APIEmail, ShouldEqual, tt.wantEmail)
 				So(c.api.APIKey, ShouldEqual, tt.wantKey)
 				So(c.api.BaseURL, ShouldEqual, tt.wantURL)
-				So(c, ShouldResemble, &cfAPI{})
+				// So(c, ShouldResemble, &cfAPI{})
 			default:
 				So(err.Error(), ShouldResemble, tt.wantErr.Error())
 				So(c, ShouldBeNil)
 			}
 		})
 	}
+}
+
+func TestDNSRecords(t *testing.T) {
+	Convey("Testing DNSRecords", t, func() {
+		env = newOpts()
+		So(env, ShouldNotBeNil)
+
+		*env.apiKey = "beaddeaf"
+		*env.email = "testing@test.local"
+
+		env.Init(prog, mflag.ExitOnError)
+		env.setArgs()
+
+		c, err := newcfAPI(env)
+		So(err, ShouldBeNil)
+		So(c, ShouldNotBeNil)
+
+		cf, err := c.DNSRecords(c.api, "test", cloudflare.DNSRecord{})
+		So(err, ShouldNotBeNil)
+		So(cf, ShouldNotBeNil)
+	})
+}
+
+func TestZoneIDByName(t *testing.T) {
+	Convey("Testing DNSRecords", t, func() {
+		env = newOpts()
+		So(env, ShouldNotBeNil)
+
+		*env.apiKey = "beaddeaf"
+		*env.email = "testing@test.local"
+
+		env.Init(prog, mflag.ExitOnError)
+		env.setArgs()
+
+		c, err := newcfAPI(env)
+		So(err, ShouldBeNil)
+		So(c, ShouldNotBeNil)
+
+		s, err := c.ZoneIDByName(c.api, "test")
+		So(err, ShouldNotBeNil)
+		So(s, ShouldEqual, "")
+	})
 }

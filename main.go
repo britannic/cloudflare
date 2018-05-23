@@ -60,7 +60,6 @@ type opts struct {
 func main() {
 	var (
 		c   *cfAPI
-		api *cloudflare.API
 		err error
 		ip  string
 	)
@@ -89,7 +88,7 @@ func main() {
 	// }
 
 	if c != nil {
-		zoneID, err := c.ZoneIDByName(api, *env.domain)
+		zoneID, err := c.ZoneIDByName(c.api, *env.domain)
 		if err != nil {
 			env.log.Fatalln(err)
 		}
