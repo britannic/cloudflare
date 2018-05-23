@@ -1,16 +1,84 @@
 package main
 
 import (
-	"errors"
 	"os"
 	"testing"
 
 	cloudflare "github.com/cloudflare/cloudflare-go"
-
+	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-func Test_getCFAPI(t *testing.T) {
+// Ensure cfAPI implements the Cloudflare & Dnsrecords interfaces, compile will fail otherwise
+var (
+	_ Cloudflare = (*CfAPI)(nil)
+	// _ Dnsrecords = (*mocks.CfAPI)(nil)
+)
+
+func TestGetDNSRecord(t *testing.T) {
+	tests := []struct {
+		name       string
+		api        Cloudflare
+		z          *cfAPI
+		cf         *CfAPI
+		dns        cloudflare.DNSRecord
+		fqdn       string
+		message    string
+		wantError  bool
+		wantFQDN   string
+		wantResult string
+		zoneID     string
+	}{
+		{
+			name:       "GetDNSRecord() should fail",
+			message:    "system panic",
+			wantError:  true,
+			wantResult: "function GetDNSRecord() failed: error from makeRequest",
+		},
+		{
+			name:      "GetDNSRecord() should work",
+			fqdn:      "nelly.topper.local",
+			wantError: false,
+			wantFQDN:  "nelly.topper.local",
+			zoneID:    "deadbeef",
+		},
+		{
+			name:       "GetDNSRecord() should fail",
+			fqdn:       "nelly.topper.local",
+			wantError:  true,
+			wantResult: "nelly.topper.local was not found",
+			zoneID:     "deadbeef",
+		},
+	}
+
+	for _, tt := range tests {
+		Convey(tt.name, t, func() {
+			tt.cf = &CfAPI{}
+			tt.api = &CfAPI{
+				Fqdn:    tt.wantFQDN,
+				Message: tt.message,
+				WantErr: tt.wantError,
+				ZoneID:  tt.zoneID,
+			}
+			tt.dns = cloudflare.DNSRecord{}
+			tt.z = &cfAPI{}
+
+			act, err := tt.z.GetDNSRecord(tt.api, tt.zoneID, tt.fqdn, tt.dns)
+			exp := cloudflare.DNSRecord{Name: tt.fqdn}
+
+			switch tt.wantError {
+			case true:
+				So(act, ShouldResemble, cloudflare.DNSRecord{})
+				So(err.Error(), ShouldResemble, tt.wantResult)
+			default:
+				So(act.Name, ShouldResemble, exp.Name)
+				So(err, ShouldBeNil)
+			}
+		})
+	}
+}
+
+func TestNewcfAPI(t *testing.T) {
 	tests := []struct {
 		name      string
 		osEnv     bool
@@ -41,6 +109,13 @@ func Test_getCFAPI(t *testing.T) {
 			wantErr:   nil,
 		},
 		{
+			name:      "With email and key args, but without OS env variables",
+			wantEmail: "test@testing.com",
+			wantKey:   "1a234ef12d0b57a",
+			osEnv:     false,
+			wantErr:   nil,
+		},
+		{
 			name:      "Without args, but only OS env email variable set",
 			wantEmail: "test@testing.com",
 			osEnv:     true,
@@ -53,6 +128,13 @@ func Test_getCFAPI(t *testing.T) {
 			wantErr: errors.New("invalid credentials: key & email must not be empty"),
 		},
 		{
+			name:      "Without args: OS env API email and key variables set",
+			wantEmail: "test@testing.com",
+			wantKey:   "1a234ef12d0b57a",
+			osEnv:     true,
+			wantErr:   nil,
+		},
+		{
 			name:    "Without args, but only OS env API URL variable set",
 			wantURL: "https://api.cf.local",
 			osEnv:   true,
@@ -62,13 +144,13 @@ func Test_getCFAPI(t *testing.T) {
 
 	for _, tt := range tests {
 		Convey(tt.name, t, func() {
-			got := newOpts()
+			env := newOpts()
 			So(os.Unsetenv("CF_API_EMAIL"), ShouldBeNil)
 			So(os.Unsetenv("CF_API_KEY"), ShouldBeNil)
 			So(os.Unsetenv("CF_API_URL"), ShouldBeNil)
-			*got.email = ""
-			*got.apiKey = ""
-			*got.apiURL = ""
+			*env.email = ""
+			*env.apiKey = ""
+			*env.apiURL = ""
 
 			if tt.osEnv {
 				So(os.Setenv("CF_API_EMAIL", tt.wantEmail), ShouldBeNil)
@@ -77,56 +159,29 @@ func Test_getCFAPI(t *testing.T) {
 			}
 
 			if !tt.osEnv && tt.wantErr == nil {
-				*got.email = tt.wantEmail
-				*got.apiKey = tt.wantKey
-				*got.apiURL = tt.wantURL
+				*env.email = tt.wantEmail
+				*env.apiKey = tt.wantKey
 			}
 
-			err := got.getCFAPI()
+			if tt.wantURL != "" {
+				*env.apiURL = tt.wantURL
+			} else {
+				tt.wantURL = "https://api.cloudflare.com/client/v4"
+			}
+
+			c, err := newcfAPI(env)
 
 			switch {
 			case tt.wantErr == nil:
 				So(err, ShouldBeNil)
-				So(got.api.APIEmail, ShouldEqual, tt.wantEmail)
-				So(got.api.APIKey, ShouldEqual, tt.wantKey)
-				So(got.api.BaseURL, ShouldEqual, tt.wantURL)
-			case tt.wantErr != nil:
+				So(c.api.APIEmail, ShouldEqual, tt.wantEmail)
+				So(c.api.APIKey, ShouldEqual, tt.wantKey)
+				So(c.api.BaseURL, ShouldEqual, tt.wantURL)
+				So(c, ShouldResemble, &cfAPI{})
+			default:
 				So(err.Error(), ShouldResemble, tt.wantErr.Error())
+				So(c, ShouldBeNil)
 			}
 		})
 	}
-}
-
-func TestGetDNSRecord(t *testing.T) {
-	exitCmd = func(int) {}
-
-	Convey("Testing getDNSRecord()", t, func() {
-		env = newOpts()
-		act := &fakeAPI{}
-		env.cf = act
-		env.log = &fakelogger{}
-
-		*env.email = "user@big.com"
-		*env.apiKey = "deadbeef"
-		*env.apiURL = "http://testing.home.local"
-
-		_, err := env.getDNSRecord("Zone ID", "fqdn.domains.local")
-		So(err.Error(), ShouldEqual, "fqdn.domains.local was not found")
-		So(act.message, ShouldEqual, "")
-	})
-}
-
-// DNSRecords returns an array of DNSRecord
-func (f *fakeAPI) DNSRecords(s string, rr cloudflare.DNSRecord) ([]cloudflare.DNSRecord, error) {
-	var r []cloudflare.DNSRecord
-	r = append(r, rr)
-	return r, nil
-}
-
-// ZoneIDByName retrieves a zone's ID from the name.
-func (f *fakeAPI) ZoneIDByName(zoneName string) (string, error) {
-	if f.message != zoneName {
-		return zoneName, errors.New("command ListZones failed: error from makeRequest: HTTP request failed")
-	}
-	return zoneName, nil
 }

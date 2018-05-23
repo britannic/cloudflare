@@ -38,8 +38,6 @@ type logger interface {
 type opts struct {
 	*mflag.FlagSet
 	// Cloudflare vars
-	cf         cfAPI
-	api        *cloudflare.API
 	domain     *string
 	email      *string
 	apiKey     *string
@@ -50,24 +48,35 @@ type opts struct {
 	dryrun     *bool
 	file       *string
 	help       *bool
+	host       *string
 	hostOS     *string
 	log        logger
 	mips64     *string
 	mipsle     *string
-	ok         bool
 	showVer    *bool
 	verbose    *bool
 }
 
 func main() {
+	var (
+		c   *cfAPI
+		api *cloudflare.API
+		err error
+		ip  string
+	)
 	env.Init(prog, mflag.ExitOnError)
 	env.setArgs()
-
-	if err := env.getCFAPI(); err != nil {
+	ip, err = env.routableIP("udp", "8.8.8.8:80")
+	if err != nil {
 		env.log.Fatalln(err)
 	}
 
-	fmt.Println(env.routableIP("udp", "8.8.8.8:80"))
+	fmt.Println(ip)
+
+	c, err = newcfAPI(env)
+	if err != nil {
+		env.log.Fatalln(err)
+	}
 
 	// Fetch a slice of all zones available to this account.
 	// zones, err := api.ListZones()
@@ -79,15 +88,15 @@ func main() {
 	// 	fmt.Println(z.Name)
 	// }
 
-	if env.ok {
-		zoneID, err := env.cf.ZoneIDByName("orbc2.org")
+	if c != nil {
+		zoneID, err := c.ZoneIDByName(api, *env.domain)
 		if err != nil {
 			env.log.Fatalln(err)
 		}
 
-		r, err := env.getDNSRecord(zoneID, "sylvania.kh.orbc2.org")
+		r, err := c.GetDNSRecord(c, zoneID, *env.host, cloudflare.DNSRecord{})
 		if err != nil {
-			fmt.Println(err)
+			env.log.Fatalln(err)
 		}
 
 		fmt.Printf("Name: %s\nID: %s\nProxied: %v\n", r.Name, r.ID, r.Proxied)
@@ -107,7 +116,7 @@ func (o *opts) routableIP(network, address string) (string, error) {
 	ip := conn.LocalAddr().(*net.UDPAddr).String()
 	ndx := strings.LastIndex(ip, ":")
 	conn.Close()
-	// return ip
+
 	return ip[0:ndx], nil
 }
 
@@ -135,7 +144,7 @@ func basename(s string) string {
 func cleanArgs(args []string) (r []string) {
 	for _, a := range args {
 		switch {
-		case strings.HasPrefix(a, "-test"), strings.HasPrefix(a, "-convey"):
+		case strings.HasPrefix(a, "-test"), strings.HasPrefix(a, "-convey"), strings.HasPrefix(a, "-test.timeout"):
 			continue
 		default:
 			r = append(r, a)
@@ -150,11 +159,11 @@ func newOpts() *opts {
 	)
 
 	return &opts{
-		cf:      &cloudflare.API{},
 		FlagSet: &flags,
 		log:     log.New(os.Stderr, "", log.Ltime),
 		// Cloudflare settings
 		domain:     flags.String("domain", "", "domain registered with Cloudflare to update", true),
+		host:       flags.String("host", "", "host name registered with Cloudflare", true),
 		email:      flags.String("email", "", "email address registered with Cloudflare", true),
 		apiKey:     flags.String("apikey", "", "Cloudflare API key", true),
 		apiURL:     flags.String("url", "", "Cloudflare API v4 URI", true),
