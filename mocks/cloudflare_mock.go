@@ -33,6 +33,10 @@ func (c *CfAPI) DNSRecords(_ *cloudflare.API, zoneID string, _ cloudflare.DNSRec
 	return r, nil
 }
 
+func (c *CfAPI) UpdateDNSRecord(api *cloudflare.API, zoneID string, recordID string, rr cloudflare.DNSRecord) error {
+	return nil
+}
+
 // ZoneIDByName retrieves a zone's ID from the name.
 func (c *CfAPI) ZoneIDByName(_ *cloudflare.API, zoneName string) (s string, err error) {
 	return s, nil

@@ -1,0 +1,111 @@
+#!/bin/bash
+
+VERSION="1.1"
+DDNS="cloudflare-ddns"
+DDNS_CONFIG_DIR="/config/user-data/ddns-scripts"
+ME=$(echo $(hostname -s)| sed 's/.*/\L&/')
+SCRIPTS="/config/scripts"
+POSTCFG="${SCRIPTS}/post-config.d"
+UPDATER="cf-ddns-update"
+# DEB="/tmp/cfgdeb"
+# date > ${DEB}
+
+echo "Running TSD OR-2 EdgeRouter setup script version ${VERSION}"
+echo ""
+
+if (( ${EUID} != 0 )); then
+	echo "You must run this script as root. Try running it as: sudo ${0}"
+	exit 1
+fi
+
+if [ "${ME}" = "ubnt" ]; then
+	echo "System hostname is unconfigured, set it and re-run the script."
+	exit 1
+fi
+
+echo "Installing ddns scripts..."
+#see if we need to create ${DDNS_CONFIG_DIR}
+if [[ ! -d ${DDNS_CONFIG_DIR} ]]; then
+	mkdir ${DDNS_CONFIG_DIR}
+	if (( ${?} != 0 )); then
+		echo "Unable to create directory ${DDNS_CONFIG_DIR}. Exiting."
+		# echo "could not create ${DDNS_CONFIG_DIR}" >> ${DEB}
+		exit 1
+	fi
+fi
+
+#see if we need to create ${SCRIPTS} 
+if [[ ! -d ${SCRIPTS} ]]; then
+	mkdir ${SCRIPTS}
+	if (( ${?} != 0 )); then
+		echo "Unable to create directory ${SCRIPTS}. Exiting."
+		# echo "could not create ${SCRIPTS}" >> ${DEB}
+		exit 1
+	fi
+fi
+
+if [[ -f ${UPDATER} ]]; then
+	install -o root -g root -m 0755 "${UPDATER}" ${SCRIPTS}
+	if (( ${?} != 0 )); then
+		echo "WARNING: Unable to install "${UPDATER}" to ${SCRIPTS}!"
+		# echo "unable to install ${type} script from localdir to ${TARGETDIR}" >> ${DEB}
+	fi
+
+	install -o root -g root -m 0755 "${UPDATER}" ${DDNS_CONFIG_DIR}
+	if (( ${?} != 0 )); then
+		echo "WARNING: Unable to install "${UPDATER}" script to persist!"
+		# echo "unable to install ${type} script from localdir to ${DDNS_CONFIG_DIR}" >> ${DEB}
+	fi
+fi
+
+for type in pppoe dhcp
+do
+	# echo "in for loop. type=${type}" >> ${DEB}
+	if [[ ${type} = "pppoe" ]]; then
+		TARGETDIR="/etc/ppp/ip-up.d"
+	else
+		TARGETDIR="/etc/dhcp3/dhclient-exit-hooks.d"
+	fi
+
+	if [[ -e "zz-${DDNS}-${type}" ]]; then
+		install -o root -g root -m 0755 "zz-${DDNS}-${type}" ${TARGETDIR}
+		
+		if (( ${?} != 0 )); then
+			echo "WARNING: Unable to install ${type} script!"
+			# echo "unable to install ${type} script from localdir to ${TARGETDIR}" >> ${DEB}
+		fi
+		
+		install -o root -g root -m 0755 zz-${DDNS}-${type} ${DDNS_CONFIG_DIR}
+		if (( ${?} != 0 )); then
+			echo "WARNING: Unable to install ${type} script to persist!"
+			# echo "unable to install ${type} script from localdir to ${DDNS_CONFIG_DIR}" >> ${DEB}
+		fi
+	
+	else
+		if [[ -e "${DDNS_CONFIG_DIR}/zz-${DDNS}-${type}" ]]; then
+			
+			install -o root -g root -m 0755 "${DDNS_CONFIG_DIR}/zz-${DDNS}-${type}" ${TARGETDIR}
+			if (( ${?} != 0 )); then
+				echo "WARNING: Unable to install ${type} script!"
+				# echo "unable to install ${type} script from /config to ${TARGETDIR}" >> ${DEB}
+			fi
+
+		else
+			echo "Unable to find ${type} script anywhere. Exiting."
+			# echo "cannot find ${type} script at all" >> ${DEB}
+			exit 1
+		fi
+	fi
+done
+
+if [[ ! -e ${POSTCFG}/${DDNS} ]]; then
+	install -o root -g root -m 0755 ${0} ${POSTCFG}/${DDNS}
+	if (( ${?} != 0 )); then
+		echo "Unable to install this script into ${POSTCFG}/${DDNS} for upgrade persistence. Exiting."
+		# echo "cannot install myself to post-config" >> ${DEB}
+		exit 1
+	fi
+fi
+
+echo "Successfully completed Cloudflare DDNS setup."
+exit 0

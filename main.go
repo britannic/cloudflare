@@ -23,6 +23,13 @@ var (
 	exitCmd      = os.Exit
 	env          = newOpts()
 	prog         = basename(os.Args[0])
+	ip_arg       = struct {
+		host_port string
+		net       string
+	}{
+		host_port: "8.8.8.8:80",
+		net:       "udp",
+	}
 
 	// prefix  = fmt.Sprintf("%s: ", prog)
 )
@@ -65,29 +72,12 @@ func main() {
 	)
 	env.Init(prog, mflag.ExitOnError)
 	env.setArgs()
-	ip, err = env.routableIP("udp", "8.8.8.8:80")
-	if err != nil {
+
+	if c, err = newcfAPI(env); err != nil {
 		env.log.Fatalln(err)
 	}
 
-	fmt.Println(ip)
-
-	c, err = newcfAPI(env)
-	if err != nil {
-		env.log.Fatalln(err)
-	}
-
-	// Fetch a slice of all zones available to this account.
-	// zones, err := api.ListZones()
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// for _, z := range zones {
-	// 	fmt.Println(z.Name)
-	// }
-
-	if c != nil {
+	if err == nil {
 		zoneID, err := c.ZoneIDByName(c.api, *env.domain)
 		if err != nil {
 			env.log.Fatalln(err)
@@ -98,10 +88,16 @@ func main() {
 			env.log.Fatalln(err)
 		}
 
-		fmt.Printf("Name: %s\nID: %s\nProxied: %v\n", r.Name, r.ID, r.Proxied)
+		if ip, err = env.routableIP(ip_arg.net, ip_arg.host_port); err != nil {
+			env.log.Fatalln(err)
+		}
+
+		r.Content = ip
+
+		fmt.Printf("Name: %s\nID: %s\nIP: %s\nProxied: %v\n", r.Name, r.ID, r.Content, r.Proxied)
 	}
 
-	// api.UpdateDNSRecord(zoneID string, recordID string, rr cloudflare.DNSRecord)
+	// c.UpdateDNSRecord(zoneID string, recordID string, rr cloudflare.DNSRecord)
 
 }
 

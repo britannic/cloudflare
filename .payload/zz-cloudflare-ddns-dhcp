@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# Find out if we have a connected Internet accessible WAN interface
+# wanif=$(ip route get 8.8.8.8 | awk -F"dev " 'NR==1 {split($2,a," ");print a[1]}')
+# host=$(echo $(hostname -s)| sed 's/.*/\L&/')
+
+if [[ "${new_ip_address}" != "" ]] && [[ "${interface}" = "${wanif}" ]]
+then
+
+fi

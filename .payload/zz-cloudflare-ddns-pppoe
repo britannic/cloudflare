@@ -1,0 +1,10 @@
+#!/bin/bash
+
+host=$(echo $(hostname -s)| sed 's/.*/\L&/')
+
+
+#if interface name is not pppoe0 then skip this. it is probably a pptp vpn
+if [[ "${PPP_IFACE}" = "pppoe0" ]]
+then
+
+fi

@@ -11,6 +11,7 @@ import (
 // Cloudflare  interface wraps cloudflare.API functions that can be overriden
 type Cloudflare interface {
 	DNSRecords(*cloudflare.API, string, cloudflare.DNSRecord) ([]cloudflare.DNSRecord, error)
+	UpdateDNSRecord(*cloudflare.API, string, string, cloudflare.DNSRecord) error
 	ZoneIDByName(*cloudflare.API, string) (string, error)
 }
 
@@ -43,19 +44,19 @@ func newcfAPI(o *opts) (*cfAPI, error) {
 		opt   cloudflare.Option
 	)
 
-	if os.Getenv("CF_API_URL") != "" {
+	if is(os.Getenv("CF_API_URL")) {
 		opt = setBaseURL(os.Getenv("CF_API_URL"))
 	}
 
-	if *o.apiURL != "" {
+	if is(*o.apiURL) {
 		opt = setBaseURL(*o.apiURL)
 	}
 
-	if *o.apiKey != "" {
+	if is(*o.apiKey) {
 		key = *o.apiKey
 	}
 
-	if *o.email != "" {
+	if is(*o.email) {
 		email = *o.email
 	}
 
@@ -72,6 +73,7 @@ func newcfAPI(o *opts) (*cfAPI, error) {
 	return &cfAPI{api: cf}, err
 }
 
+// GetDNSRecord returns a single cloudflare.DNSRecord
 func (c *cfAPI) GetDNSRecord(cf Cloudflare, zoneID, fqdn string, r cloudflare.DNSRecord) (cloudflare.DNSRecord, error) {
 	recs, err := cf.DNSRecords(c.api, zoneID, r)
 	if err != nil {
@@ -89,11 +91,19 @@ func (c *cfAPI) GetDNSRecord(cf Cloudflare, zoneID, fqdn string, r cloudflare.DN
 	return cloudflare.DNSRecord{}, errors.New(fqdn + " was not found")
 }
 
+func is(s string) bool {
+	return s != ""
+}
+
 // DNSRecords returns a slice of DNS records for the given zone identifier.
 //
 // This takes a DNSRecord to allow filtering of the results returned.
 func (c *cfAPI) DNSRecords(api *cloudflare.API, zoneID string, rr cloudflare.DNSRecord) ([]cloudflare.DNSRecord, error) {
 	return api.DNSRecords(zoneID, rr)
+}
+
+func (c *cfAPI) UpdateDNSRecord(api *cloudflare.API, zoneID string, recordID string, rr cloudflare.DNSRecord) error {
+	return api.UpdateDNSRecord(zoneID, recordID, rr)
 }
 
 // ZoneIDByName retrieves a zone's ID from the name.
